@@ -1,0 +1,26 @@
+{
+  "name": "angie-realtime-databinding",
+  "version": "0.0.1",
+  "homepage": "https://angie-framework.github.io/angie",
+  "authors": [
+    "Joe Groseclose <@benderTheCrime>"
+  ],
+  "description": "Angie Realtime Databinding: A databing module for the Angie Framework: bind 8 ways!",
+  "main": "dist/index.js",
+  "moduleType": [
+    "es6"
+  ],
+  "keywords": [
+    "Angie",
+    "JavaScript",
+    "REST",
+    "MVC",
+    "Framework",
+    "API"
+  ],
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "socket.io": "~1.3.7"
+  }
+}

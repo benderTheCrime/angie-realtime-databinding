@@ -1,0 +1,17 @@
+{
+    "projectName": "angie-realtime-databinding",
+    "projectRoot": "./src",
+    "development": false,
+    "templateDirs": [],
+    "staticDirs": [
+        "static/"
+    ],
+    "dependencies": [
+        "angie-injector",
+        "angie-orm"
+    ],
+    "responseErrorTimeout": 5000,
+    "loadDefaultScriptFile": [
+        "js/angie-binding.js"
+    ]
+}
