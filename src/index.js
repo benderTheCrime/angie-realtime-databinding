@@ -43,11 +43,12 @@ function pollForExposedServerUpdate() {
     setImmediate(pollForExposedServerUpdate);
 }
 
-// TODO fix dependencies
-// TODO build model
-// TODO schema connection from directive/controller to model or scope to model, better as scope to model
 // TODO make directives persist to frontend if they are supposed to observe
+    // Make ngie-value directive
+    // Add "ngie-id" as uuid or something equivalent to keep track of databound entities
+    // $compile should recognize when a scoped property is bound
 // TODO perform mutation observance
+    // Check to see if attributed property is changed
 
 // TODO front end has percieved state of data...
     // Updates are made instantly in the client js

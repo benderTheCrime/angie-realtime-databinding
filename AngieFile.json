@@ -1,5 +1,5 @@
 {
-    "projectName": "angie-realtime-databinding",
+    "projectName": "$BindingProvider",
     "projectRoot": "./src",
     "development": false,
     "templateDirs": [],
