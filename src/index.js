@@ -52,7 +52,7 @@ function pollForExposedServerUpdate() {
     // Cookie service -> Should be able to manage the session cookie
     // Need to alias fetch to be provided when scope is called
 // TODO instantiate and store $scope on sessions
-    // Change scope fetcher to retrieve $scope from the session
+    // Change scope fetcher to retrieve $scope, $request, $response from the session
 // TODO make directives persist to frontend if they are supposed to observe
     // Make ngie-value directive -> put in directive specific service
     // Add "ngie-id" as uuid or something equivalent to keep track of databound entities
