@@ -37,7 +37,10 @@ function test() {
 }
 
 function pollForExposedServerUpdate() {
-    if (Object.keys(global.app.services.$server).length) {
+    if (
+        global.app.services.$server &&
+        Object.keys(global.app.services.$server).length
+    ) {
         return test();
     }
     setImmediate(pollForExposedServerUpdate);
