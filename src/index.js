@@ -46,16 +46,16 @@ function pollForExposedServerUpdate() {
     setImmediate(pollForExposedServerUpdate);
 }
 
-// TODO Fix Injector
+// TODO Fix Injector DONE
     // Remove registry stuff DONE
     // README Explaination of why it can't be used generically DONE
     // Special cases for request response and scope DONE
-    // Expose scope $$fetch, request $$fetch and response $$fetch as modules
-// TODO setup simple sessions
-    // Cookie service -> Should be able to manage the session cookie
-    // Need to alias fetch to be provided when scope is called
-// TODO instantiate and store $scope on sessions
-    // Change scope fetcher to retrieve $scope, $request, $response from the session
+    // Expose scope $$fetch, request $$fetch and response $$fetch as modules DONE
+        // TODO cleanup requests, cleanup $$cookies, cleanup $$response in $$server DONE
+// TODO setup simple sessions DONE
+    // Need to alias fetch to be provided when scope is called DONE
+// TODO instantiate and store $scope on sessions DONE
+    // Change scope fetcher to retrieve $scope, $request, $response from the session DONE
 // TODO make directives persist to frontend if they are supposed to observe
     // Make ngie-value directive -> put in directive specific service
     // Add "ngie-id" as uuid or something equivalent to keep track of databound entities
