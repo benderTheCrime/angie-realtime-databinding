@@ -18,7 +18,9 @@ import $Injector from           'angie-injector';
 
 pollForExposedServerUpdate();
 
-function test() {
+let bindings = {};
+
+function attachSocketListener() {
     const $server = $Injector.get('$server'),
         socket = io($server);
 
@@ -33,7 +35,17 @@ function test() {
         //
     });
 
-    app.service('$socket', socket);
+
+
+
+
+    function bindingFactory(uuid, obj) {
+
+        // TODO do a little validation here
+        // TODO literally EVERY binding must be different
+    }
+
+    app.service('$socket', socket).factory('$Bind', bindingFactory);
 }
 
 function pollForExposedServerUpdate() {
@@ -41,21 +53,11 @@ function pollForExposedServerUpdate() {
         global.app.services.$server &&
         Object.keys(global.app.services.$server).length
     ) {
-        return test();
+        return attachSocketListener();
     }
     setImmediate(pollForExposedServerUpdate);
 }
 
-// TODO Fix Injector DONE
-    // Remove registry stuff DONE
-    // README Explaination of why it can't be used generically DONE
-    // Special cases for request response and scope DONE
-    // Expose scope $$fetch, request $$fetch and response $$fetch as modules DONE
-        // TODO cleanup requests, cleanup $$cookies, cleanup $$response in $$server DONE
-// TODO setup simple sessions DONE
-    // Need to alias fetch to be provided when scope is called DONE
-// TODO instantiate and store $scope on sessions DONE
-    // Change scope fetcher to retrieve $scope, $request, $response from the session DONE
 // TODO make directives persist to frontend if they are supposed to observe
     // Make ngie-value directive -> put in directive specific service
     // Add "ngie-id" as uuid or something equivalent to keep track of databound entities
