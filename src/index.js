@@ -16,13 +16,43 @@ import $Injector from           'angie-injector';
 // The fact that the app is loaded before $$server is called makes this
 // quite difficult
 
-pollForExposedServerUpdate();
+
 
 let bindings = {};
+
+pollForExposedServerUpdate();
+
+app.factory('$Bind', function(uuid, obj) {
+
+    // TODO do a little validation here
+    // TODO literally EVERY binding must be different
+
+
+    if (!obj.hasOwnProperty('id')) {
+        for (let key in bindings) {
+            const value = bindings[ key ];
+
+            if (
+                value.model === obj.model &&
+                value.field === obj.field &&
+                !value.hasOwnProperty('id')
+            ) {
+                uuid = key;
+                break;
+            }
+        }
+    } else {
+        bindings[ uuid ] = obj; // WOOP WOOP!
+    }
+
+    return uuid;
+});
 
 function attachSocketListener() {
     const $server = $Injector.get('$server'),
         socket = io($server);
+
+    app.service('$socket', socket);
 
     socket.on('connection', function() {
         console.log('connected');
@@ -33,19 +63,14 @@ function attachSocketListener() {
             // Is there a model associated?
             // To which keys is the model associated?
         //
+
+        // TODO destroy bindings when page is navigated away from
+        socket.on('disconnect', function(uuids) {
+            for (let uuid of uuids) {
+                delete bindings[ uuid ];
+            }
+        })
     });
-
-
-
-
-
-    function bindingFactory(uuid, obj) {
-
-        // TODO do a little validation here
-        // TODO literally EVERY binding must be different
-    }
-
-    app.service('$socket', socket).factory('$Bind', bindingFactory);
 }
 
 function pollForExposedServerUpdate() {

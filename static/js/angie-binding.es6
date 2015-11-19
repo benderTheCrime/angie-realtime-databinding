@@ -16,6 +16,33 @@
 
 
     function boot() {
-        const socket = io([ location.protocol, location.host ].join('//'));
+        const L = location,
+            els = d.querySelectorAll('*[ngie-iid]'),
+            socket = io([ L.protocol, L.host ].join('//'));
+        console.log('ELS', els);
+
+        // TODO send all uuids, get back object with all data, one by one binding
+        socket.emit('angie-bound-uuids', els.map(v => v.getAttribute('ngie-iid')));
+        socket.on('angie-bound-uuid-values', function(obj) {
+            for (let key in obj) {
+                const value = obj[ key ],
+                    el = els.filter(v => v.getAttribute('ngie-iid') === key)[ 0 ];
+
+                if (el.hasOwnProperty('value')) {
+                    el.value = value;
+                } else {
+                    el.innerHTML = value;
+                }
+            }
+        });
+
+        // TODO bind an update event to each element
+        // TODO have it update value before it sends data
+        for (let el of els) {
+
+        }
+
+        // TODO setup update pushes from sent (shared) objects
+        // TODO should update before send
     }
 })(window, document);

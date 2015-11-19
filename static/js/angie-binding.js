@@ -1,5 +1,6 @@
 // The socket.io package should attach the socket by default
 
+// TODO write this in ES6 and transpile it into this directory
 'use strict';
 
 (function (w, d) {
@@ -14,7 +15,9 @@
     d.body.appendChild(script);
 
     function boot() {
-        var socket = io([location.protocol, location.host].join('//'));
+        var L = location,
+            els = d.querySelectorAll('*[ngie-iid]'),
+            socket = io([L.protocol, L.host].join('//'));
+        console.log('ELS', els);
     }
 })(window, document);
-// TODO write this in ES6 and transpile it into this directory
