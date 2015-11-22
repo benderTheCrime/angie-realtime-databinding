@@ -8,7 +8,7 @@
 import '../bower_components/MutationObserver/MutationObserver';
 
 // Angie Binding Modules
-import debounce from        'util/debounce.es6';
+import debounce from        './util/debounce.es6';
 
 const w = window, d = w.document;
 
@@ -22,7 +22,8 @@ const MUTATION_OBSERVER = new MutationObserver(observeMe),
         attributeOldValue: true,
         characterDataOldValue: true
     };
-let script = d.createElement('script');
+let script = d.createElement('script'),
+    stateValues = {};
 
 script.type = 'text/javascript';
 script.src = './socket.io/socket.io.js';
@@ -58,6 +59,7 @@ function boot() {
                         v => v.getAttribute('ngie-iid') === key
                     )[ 0 ];
                 setValue(EL, VALUE);
+                stateValues[ key ] = VALUE;
             }
 
             // Bind an update event to each element
@@ -66,13 +68,25 @@ function boot() {
                 let node = el.nodeName.toLowerCase();
 
                 // TODO resolve for all elements, function
-
-                if ([ 'select', 'textarea', 'input', 'button' ].indexOf(node) > -1) {
+                    // TODO content editable
+                    // TODO plain containers
+                if (
+                    [
+                        'select', 'textarea', 'input', 'button'
+                    ].indexOf(node) > -1
+                ) {
                     let eName = 'keyup';
-                    if (node === 'select' || [ 'checkbox', 'radio' ].indexOf(el.type) > -1) {
+                    if (
+                        node === 'select' ||
+                        [ 'checkbox', 'radio' ].indexOf(el.type) > -1
+                    ) {
                         eName = 'change';
                     }
-                    d.addEventListener(eName, observeMe.bind(el, socket));
+
+                    // Add the input event
+                    d.addEventListener(eName, debounce(
+                        observeMe.bind(el, socket), 250
+                    ));
                 } else {
 
                     // TODO this function needs to be resolved
@@ -81,9 +95,13 @@ function boot() {
             }
 
             socket.on('angie-bound-uuid-post', function(data) {
-                return setValue(d.querySelector(
-                    '*[ngie-iid="' + data.uuid + '"]'
-                ), data.value);
+                const UUID = data.uuid,
+                    VALUE = data.value;
+
+                setValue(d.querySelector(`*[ngie-iid="${UUID}"]`), VALUE);
+                stateValues[ UUID ] = VALUE;
+
+                return true;
             });
         });
 
@@ -91,20 +109,21 @@ function boot() {
     });
 
     // TODO you need to think about the names for these events
-    // TODO can you add and remove bindings via the frontend?
     // TODO USER CUSTOM CALLBACK
 }
 
+// TODO "rename me"
 function observeMe(socket, e) {
+    const UUID = this.getAttribute('ngie-iid');
 
     // TODO the mutation version of this needs to update before it sends
     socket.emit('angie-bound-uuid', {
-        uuid: this.getAttribute('ngie-iid'),
+        uuid: UUID,
         value: getValue.call(this),
 
         // TODO check this to verify the data on the BE,
         // TODO MutationObserver should have this
-        pre: 'd'
+        pre: stateValues[ UUID ]
     });
 }
 

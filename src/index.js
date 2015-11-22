@@ -5,6 +5,7 @@
  */
 
 // System Modules
+import util from                'util';
 import { default as io } from   'socket.io';
 import $Injector from           'angie-injector';
 
@@ -60,9 +61,12 @@ function attachSocketListener() {
                     proms = [],
                     e = 'Unable to register ngieIid';
 
+                console.log('HERE -1');
+
                 // Ok here we have list of uuids
                 for (let uuid of data) {
                     if (!bindings.hasOwnProperty(uuid)) {
+                        console.log('IN NOT BINDING');
                         return emitSocketError(e);
                     }
 
@@ -70,32 +74,43 @@ function attachSocketListener() {
                     // TODO try to commonize
                     const BINDING = bindings[ uuid ];
                     let fieldName = BINDING.field,
-                        obj = {},
+                        obj = Object.keys(BINDING.filters || {}).length ?
+                            BINDING.filters : {},
                         Model,
                         field,
                         prom;
+
+                    console.log('HERE 0');
                     try {
 
                         // Check to see if we have a model
                         Model = $Injector.get(BINDING.model);
-                        field = Model[ fieldName ];
                     } catch(e) {
                         e = 'Unable to fetch the targeted object';
                         return emitSocketError(e);
+                    }
+
+                    console.log('HERE 1');
+
+                    // Field takes precedence over defined "values" in filters
+                    if (fieldName) {
+                        obj.values = [ fieldName ];
                     }
 
                     if (BINDING.hasOwnProperty('id')) {
                         obj.id = BINDING.id;
                     }
 
-                    obj.values = [ fieldName ];
                     prom = Model.filter(obj).then((function(uuid, obj, fieldName, queryset) {
                         let result;
 
                         if (obj.id) {
-                            result = queryset[ 0 ][ fieldName ];
+                            result = queryset[ 0 ];
+                            if (fieldName) {
+                                result = result[ fieldName ];
+                            }
                         } else {
-                            result = queryset.results.filter(v => v[ fieldName ]);
+                            result = queryset.results;
                         }
 
                         initialUUIDBoundDataState[ uuid ] = result;
@@ -128,22 +143,31 @@ function attachSocketListener() {
             const UUID = data.uuid,
                 VALUE = data.value,
                 BINDING = bindings[ UUID ];
-            let fieldName = BINDING.field,
+            let fieldName = BINDING.field || BINDING.filters.values[ 0 ],
+                obj = Object.keys(BINDING.filters).length ? BINDING.filters : {},
                 Model,
                 field;
             try {
 
                 // Check to see if we have a model
                 Model = $Injector.get(BINDING.model);
-                field = Model[ fieldName ];
+
+                // If we don't have a field to perform updates on we messed up
+                if (!fieldName) {
+                    throw new Error();
+                }
             } catch(e) {
                 e = 'Unable to update the targeted object';
                 return emitSocketError(e);
             }
 
             if (data.hasOwnProperty('pre')) {
-                let obj = { values: [ fieldName ] };
+                obj = util._extend(obj, {
+                    values: [ fieldName ],
+                    [ fieldName ]: data.pre
+                })
 
+                // TODO not a specific id? UPDATE values that are EQUAL TO FIELD ==
                 if (BINDING.hasOwnProperty('id')) {
                     obj.id = BINDING.id;
                 }
@@ -151,7 +175,10 @@ function attachSocketListener() {
                 Model.filter(obj).then(function(queryset) {
 
                     // TODO not zero? what if it's a whole model
-                    if (queryset[ 0 ][ fieldName ] === data.pre) {
+                    if (
+                        queryset[ 0 ] &&
+                        queryset[ 0 ][ fieldName ] === data.pre
+                    ) {
                         return queryset;
                     } else {
                         throw new Error('Invalid pre-change data');
@@ -159,7 +186,6 @@ function attachSocketListener() {
                 }).then(function(queryset) {
                     return queryset.update({ [ fieldName ]: VALUE });
                 }).then(function(queryset) {
-                    console.log('QUERYSET', queryset);
                     return socket.emit('angie-bound-uuid-post', {
                         uuid: UUID,
                         value: VALUE
@@ -204,6 +230,14 @@ function pollForExposedServerUpdate() {
     setImmediate(pollForExposedServerUpdate);
 }
 
+
+// TODO limits, filters passed to Model
+    // FIX NON DIV CONTAINERS
+    // Modify error checks on db pull (FETCH) DONE
+    // Check all combinations (no id, field and id, no field and neither), add field
+    // Check to see what returned frontend value is (object/array)
+    // Can "get" many values, but can only update one!!!
+
 // TODO perform mutation observance
     // Check to see if attributed property is changed
 
@@ -219,7 +253,5 @@ function pollForExposedServerUpdate() {
     // Updates made to the DB push data to the app, update state
     // Changes made to the app push data to the frontend, update state
 
-// TODO configuration as * for all fields
-// TODO limits
 // TODO encryption
 // TODO some error values need to be massaged, errors for failure to update

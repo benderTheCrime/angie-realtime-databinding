@@ -22,6 +22,7 @@ import babel from                       'gulp-babel';
 import copy from                        'gulp-copy';
 import webpack from                     'webpack';
 import uglify from                      'gulp-uglify';
+import rename from                      'gulp-rename';
 import { bold, red } from               'chalk';
 
 const bread = str => bold(red(str));
@@ -106,6 +107,7 @@ gulp.task('webpack', function(cb) {
 
         gulp.src(`${JS_DIR}/${FILENAME}`)
             .pipe(uglify({ mangle: false }))
+            .pipe(rename({ suffix: '.min' }))
             .pipe(gulp.dest(JS_DIR).on('end', cb));
     });
 });
