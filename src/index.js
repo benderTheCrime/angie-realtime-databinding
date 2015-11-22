@@ -25,9 +25,6 @@ pollForExposedServerUpdate();
 app.factory('$Bind', function(uuid, obj) {
 
     // TODO do a little validation here
-    // TODO literally EVERY binding must be different
-
-
     if (!obj.hasOwnProperty('id')) {
         for (let key in bindings) {
             const value = bindings[ key ];
@@ -54,23 +51,147 @@ function attachSocketListener() {
 
     app.service('$socket', socket);
 
-    socket.on('connection', function() {
-        console.log('connected');
+    socket.on('connection', function(socket) {
 
-        // TODO
-        // For each directive instance
-            // Is it attached to an observer?
-            // Is there a model associated?
-            // To which keys is the model associated?
-        //
+        // TODO you can factor this out to be your BACKEND UPDATE FUNCTION
+        socket.on('angie-bound-uuids', function(data) {
+            try {
+                let initialUUIDBoundDataState = {},
+                    proms = [],
+                    e = 'Unable to register ngieIid';
+
+                // Ok here we have list of uuids
+                for (let uuid of data) {
+                    if (!bindings.hasOwnProperty(uuid)) {
+                        return emitSocketError(e);
+                    }
+
+                    // Ok, we definitely have a binding...good
+                    // TODO try to commonize
+                    const BINDING = bindings[ uuid ];
+                    let fieldName = BINDING.field,
+                        obj = {},
+                        Model,
+                        field,
+                        prom;
+                    try {
+
+                        // Check to see if we have a model
+                        Model = $Injector.get(BINDING.model);
+                        field = Model[ fieldName ];
+                    } catch(e) {
+                        e = 'Unable to fetch the targeted object';
+                        return emitSocketError(e);
+                    }
+
+                    if (BINDING.hasOwnProperty('id')) {
+                        obj.id = BINDING.id;
+                    }
+
+                    obj.values = [ fieldName ];
+                    prom = Model.filter(obj).then((function(uuid, obj, fieldName, queryset) {
+                        let result;
+
+                        if (obj.id) {
+                            result = queryset[ 0 ][ fieldName ];
+                        } else {
+                            result = queryset.results.filter(v => v[ fieldName ]);
+                        }
+
+                        initialUUIDBoundDataState[ uuid ] = result;
+                    }).bind(null, uuid, obj, fieldName));
+
+                    proms.push(prom);
+                }
+
+                return Promise.all(proms).then(function() {
+                    socket.emit('angie-bound-uuid-values', initialUUIDBoundDataState);
+                }).catch(function(e) {
+                    return emitSocketError(e.message);
+                });
+            } catch(e) {
+                return emitSocketError(e.message);
+            }
+        });
+
+        // THIS FOR UPDATING THE MODEL BASED ON FIELDS
+        // I think you just killed it...
+        socket.on('angie-bound-uuid', function(data) {
+            let e = 'Unable to register ngieIid';
+
+            if (!data.uuid || !bindings.hasOwnProperty(data.uuid)) {
+                return emitSocketError(e);
+            }
+
+            // Ok, we definitely have a binding...good
+            // TODO try to commonize
+            const UUID = data.uuid,
+                VALUE = data.value,
+                BINDING = bindings[ UUID ];
+            let fieldName = BINDING.field,
+                Model,
+                field;
+            try {
+
+                // Check to see if we have a model
+                Model = $Injector.get(BINDING.model);
+                field = Model[ fieldName ];
+            } catch(e) {
+                e = 'Unable to update the targeted object';
+                return emitSocketError(e);
+            }
+
+            if (data.hasOwnProperty('pre')) {
+                let obj = { values: [ fieldName ] };
+
+                if (BINDING.hasOwnProperty('id')) {
+                    obj.id = BINDING.id;
+                }
+
+                Model.filter(obj).then(function(queryset) {
+
+                    // TODO not zero? what if it's a whole model
+                    if (queryset[ 0 ][ fieldName ] === data.pre) {
+                        return queryset;
+                    } else {
+                        throw new Error('Invalid pre-change data');
+                    }
+                }).then(function(queryset) {
+                    return queryset.update({ [ fieldName ]: VALUE });
+                }).then(function(queryset) {
+                    console.log('QUERYSET', queryset);
+                    return socket.emit('angie-bound-uuid-post', {
+                        uuid: UUID,
+                        value: VALUE
+                    });
+                }).catch(function(e) {
+                    return emitSocketError(e.message);
+                });
+            } else {
+
+                // TODO model validation error
+                return emitSocketError('Invalid pre-change data');
+            }
+        });
 
         // TODO destroy bindings when page is navigated away from
         socket.on('disconnect', function(uuids) {
+
+            // TODO...this should be if ALL of the clients listening on this
+            // uuid are destroyed
             for (let uuid of uuids) {
                 delete bindings[ uuid ];
             }
-        })
+        });
+
+        // TODO some verification
+        socket.emit('handshake');
     });
+
+    function emitSocketError(e) {
+        // For instance, a botched UUID was passed
+        socket.emit('angie-socket-error', e);
+    }
 }
 
 function pollForExposedServerUpdate() {
@@ -83,10 +204,6 @@ function pollForExposedServerUpdate() {
     setImmediate(pollForExposedServerUpdate);
 }
 
-// TODO make directives persist to frontend if they are supposed to observe
-    // Make ngie-value directive -> put in directive specific service
-    // Add "ngie-id" as uuid or something equivalent to keep track of databound entities
-    // $compile should recognize when a scoped property is bound
 // TODO perform mutation observance
     // Check to see if attributed property is changed
 
@@ -95,6 +212,14 @@ function pollForExposedServerUpdate() {
     // Updates are made instantly in the server session
     // Updates are pushed to the DB
 
+// TODO setup update pushes from sent (shared) objects HUGE TODO!!!
+// TODO should update before send
+
 // TODO the DB has a solid state of data
     // Updates made to the DB push data to the app, update state
     // Changes made to the app push data to the frontend, update state
+
+// TODO configuration as * for all fields
+// TODO limits
+// TODO encryption
+// TODO some error values need to be massaged, errors for failure to update

@@ -21,6 +21,7 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
+    "MutationObserver": "https://github.com/components/MutationObserver.git",
     "socket.io": "~1.3.7"
   }
 }
