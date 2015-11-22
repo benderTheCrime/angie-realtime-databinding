@@ -20,6 +20,8 @@ import istanbul from                    'gulp-istanbul';
 import esdoc from                       'gulp-esdoc';
 import babel from                       'gulp-babel';
 import copy from                        'gulp-copy';
+import webpack from                     'webpack';
+import uglify from                      'gulp-uglify';
 import { bold, red } from               'chalk';
 
 const bread = str => bold(red(str));
@@ -78,11 +80,35 @@ gulp.task('babel', function(cb) {
         cb();
     });
 });
-gulp.task('babel:transpile-binding-resource', function() {
-    return gulp.src('static/js/angie-binding.es6').pipe(babel({
-        comments: false
-    })).pipe(gulp.dest('static/js'));
-})
+gulp.task('webpack', function(cb) {
+    const JS_DIR = './static/js',
+        FILENAME = 'angie-binding.js';
+
+    // TODO test with npm i --production postinstall
+    webpack({
+        entry: `./pre-static/js/angie-binding.es6`,
+        module: {
+            loaders: [
+                {
+                    test: /\.es6$/,
+                    loader: 'babel-loader'
+                }
+            ],
+        },
+        output: {
+            path: JS_DIR,
+            filename: FILENAME
+        }
+    }, function(e) {
+        if (e) {
+            throw new Error(e);
+        }
+
+        gulp.src(`${JS_DIR}/${FILENAME}`)
+            .pipe(uglify({ mangle: false }))
+            .pipe(gulp.dest(JS_DIR).on('end', cb));
+    });
+});
 
 // Utility Tasks
 gulp.task('bump', function() {
@@ -115,14 +141,8 @@ gulp.task('test', [ 'test:src' ]);
 gulp.task('watch', [ 'test' ], function() {
     gulp.watch([ SRC, TEST_SRC ], [ 'test' ]);
 });
-gulp.task('watch:babel', [
-    'babel',
-    'babel:transpile-binding-resource'
-], function() {
-    gulp.watch([
-        'src/**',
-        'static/js/angie-binding.es6'
-    ], [ 'babel', 'babel:transpile-binding-resource' ]);
+gulp.task('watch:babel', [ 'babel', 'webpack' ], function() {
+    gulp.watch([ 'src/**', 'pre-static/**' ], [ 'babel', 'webpack' ]);
 });
 gulp.task('default', [ 'mocha:src', 'babel', 'esdoc' ]);
 
