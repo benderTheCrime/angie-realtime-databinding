@@ -34,7 +34,9 @@ function boot() {
     const L = location,
         els = Array.from(d.querySelectorAll('*[ngie-iid]')),
         socket = io([ L.protocol, L.host ].join('//')),
-        MUTATION_OBSERVER = new MutationObserver(observanceFn.bind(null, socket));
+        MUTATION_OBSERVER = new MutationObserver(
+            observanceFn.bind(null, socket)
+        );
 
     // Send all uuids, get back object with all data, one by one binding
     socket.on('connect', function() {
@@ -157,9 +159,7 @@ function getValue(el) {
 }
 
 function setValue(el, v) {
-    (el = el || this)[
-        'value' in el ? 'value' :  'innerHTML'
-    ] = v;
+    (el = el || this)[ 'value' in el ? 'value' :  'innerHTML' ] = v;
 
     return true;
 }
