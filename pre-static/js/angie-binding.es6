@@ -10,7 +10,7 @@ import                      '../bower_components/MutationObserver/MutationObserv
 // Angie Binding Modules
 import debounce from        './util/debounce.es6';
 
-const w = window, d = w.document;
+const w = window, d = w.document, bindings = w.angieBindings = {};
 
 // Attach a script
 const MUTATION_OBSERVER_OPTIONS = {
@@ -34,17 +34,17 @@ function boot() {
     const L = location,
         els = Array.from(d.querySelectorAll('*[ngie-iid]')),
         socket = io([ L.protocol, L.host ].join('//')),
-        MUTATION_OBSERVER = new MutationObserver(observeMe.bind(null, socket));
+        MUTATION_OBSERVER = new MutationObserver(observanceFn.bind(null, socket));
 
     // Send all uuids, get back object with all data, one by one binding
     socket.on('connect', function() {
         socket.on('handshake', function() {
-            socket.emit('angie-bound-uuids', els.map(
-                v => v.getAttribute('ngie-iid'))
-            );
+            socket.emit('a0001', els.map(
+                v => v.getAttribute('ngie-iid')
+            ));
         });
 
-        socket.on('angie-bound-uuid-values', function(data) {
+        socket.on('a0002', function(data) {
 
             // Start by disconnecting all of the mutation observers
             MUTATION_OBSERVER.disconnect();
@@ -60,6 +60,22 @@ function boot() {
                     )[ 0 ];
                 setValue(EL, VALUE);
                 stateValues[ key ] = VALUE;
+
+                // Register callbacks on the window so that they can be
+                // overriden by the user
+                w.angieBindings[ key ] = {
+                    callback: updateFn.bind(null, key),
+                    error: errorFn.bind(null, key)
+                };
+
+                socket.on(`a0004::${key}`, data => {
+
+                    // TODO decrypt
+                    w.angieBindings[ key ].callback(data);
+                });
+                socket.on(`a0005::${key}`, e => {
+                    w.angieBindings[ key ].error(e);
+                });
             }
 
             // Bind an update event to each element
@@ -85,47 +101,51 @@ function boot() {
 
                     // Add the input event
                     d.addEventListener(eName, debounce(
-                        observeMe.bind(el, socket), 250
+                        observanceFn.bind(el, socket), 250
                     ));
                 } else {
-
-                    // TODO this function needs to be resolved
                     MUTATION_OBSERVER.observe(el, MUTATION_OBSERVER_OPTIONS);
                 }
             }
 
-            socket.on('angie-bound-uuid-post', function(data) {
-                const UUID = data.uuid,
-                    VALUE = data.value;
+            socket.on(`a0005`, errorFn.bind(null, null));
 
-                setValue(d.querySelector(`*[ngie-iid="${UUID}"]`), VALUE);
-                stateValues[ UUID ] = VALUE;
+            function updateFn(uuid, data) {
+                const VALUE = data.value;
+
+                setValue(d.querySelector(`*[ngie-iid="${uuid}"]`), VALUE);
+                stateValues[ uuid ] = VALUE;
 
                 return true;
-            });
+            }
+
+            function errorFn(uuid, data) {
+
+                // Log our error
+                console.error(data.message);
+
+                setValue(d.querySelector(
+                    `*[ngie-iid="${uuid}"]`), stateValues[ uuid ]
+                );
+            }
         });
-
-        socket.on('angie-socket-error', e => { throw new Error(e); });
     });
-
-    // TODO you need to think about the names for these events
-    // TODO USER CUSTOM CALLBACK
 }
 
-// TODO "rename me"
-function observeMe(socket, e) {
+function observanceFn(socket, e) {
 
     // This will always be parentNode if its a character data mutation
     const EL = this || (e[ 0 ] && e[ 0 ].target.parentNode),
-        UUID = EL.getAttribute('ngie-iid');
+        UUID = EL.getAttribute('ngie-iid'),
+        VALUE = getValue.call(EL);
 
-    // TODO the mutation version of this needs to update before it sends
-    socket.emit('angie-bound-uuid', {
+    if (e && e[ 0 ]) {
+        EL.innerHTML = VALUE;
+    }
+
+    socket.emit('a0003', {
         uuid: UUID,
-        value: getValue.call(EL),
-
-        // TODO check this to verify the data on the BE,
-        // TODO MutationObserver should have this
+        value: VALUE,
         pre: stateValues[ UUID ]
     });
 }
