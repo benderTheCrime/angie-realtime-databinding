@@ -7,6 +7,7 @@
 // System Modules
 import util from                'util';
 import { default as io } from   'socket.io';
+import { sanitize } from        'google-caja-sanitizer';
 import $Injector from           'angie-injector';
 
 // This package should only be included when necessary! It will instantiate a listener
@@ -51,7 +52,6 @@ function attachSocketListener() {
         socket = io($server);
 
     app.service('$socket', socket);
-
     socket.on('connection', function(socket) {
 
         // TODO you can factor this out to be your BACKEND UPDATE FUNCTION
@@ -61,12 +61,9 @@ function attachSocketListener() {
                     proms = [],
                     e = 'Unable to register ngieIid';
 
-                console.log('HERE -1');
-
                 // Ok here we have list of uuids
                 for (let uuid of data) {
                     if (!bindings.hasOwnProperty(uuid)) {
-                        console.log('IN NOT BINDING');
                         return emitSocketError(e);
                     }
 
@@ -79,8 +76,6 @@ function attachSocketListener() {
                         Model,
                         field,
                         prom;
-
-                    console.log('HERE 0');
                     try {
 
                         // Check to see if we have a model
@@ -90,21 +85,19 @@ function attachSocketListener() {
                         return emitSocketError(e);
                     }
 
-                    console.log('HERE 1');
-
                     // Field takes precedence over defined "values" in filters
                     if (fieldName) {
                         obj.values = [ fieldName ];
                     }
 
-                    if (BINDING.hasOwnProperty('id')) {
+                    if (BINDING.hasOwnProperty('id') && BINDING.id) {
                         obj.id = BINDING.id;
                     }
 
                     prom = Model.filter(obj).then((function(uuid, obj, fieldName, queryset) {
                         let result;
 
-                        if (obj.id) {
+                        if (obj.hasOwnProperty('id')) {
                             result = queryset[ 0 ];
                             if (fieldName) {
                                 result = result[ fieldName ];
@@ -141,10 +134,13 @@ function attachSocketListener() {
             // Ok, we definitely have a binding...good
             // TODO try to commonize
             const UUID = data.uuid,
-                VALUE = data.value,
+
+                // Sanitize everything we get back from the front end
+                VALUE = sanitize(data.value),
                 BINDING = bindings[ UUID ];
             let fieldName = BINDING.field || BINDING.filters.values[ 0 ],
-                obj = Object.keys(BINDING.filters).length ? BINDING.filters : {},
+                obj = Object.keys(BINDING.filters || {}).length ?
+                    BINDING.filters : {},
                 Model,
                 field;
             try {
@@ -165,20 +161,20 @@ function attachSocketListener() {
                 obj = util._extend(obj, {
                     values: [ fieldName ],
                     [ fieldName ]: data.pre
-                })
+                });
 
-                // TODO not a specific id? UPDATE values that are EQUAL TO FIELD ==
-                if (BINDING.hasOwnProperty('id')) {
+                if (BINDING.hasOwnProperty('id') && BINDING.id) {
                     obj.id = BINDING.id;
                 }
 
                 Model.filter(obj).then(function(queryset) {
-
-                    // TODO not zero? what if it's a whole model
                     if (
+                        obj.id && fieldName &&
                         queryset[ 0 ] &&
                         queryset[ 0 ][ fieldName ] === data.pre
                     ) {
+                        return queryset;
+                    } else if (queryset === data.pre) {
                         return queryset;
                     } else {
                         throw new Error('Invalid pre-change data');
@@ -230,14 +226,6 @@ function pollForExposedServerUpdate() {
     setImmediate(pollForExposedServerUpdate);
 }
 
-
-// TODO limits, filters passed to Model
-    // FIX NON DIV CONTAINERS
-    // Modify error checks on db pull (FETCH) DONE
-    // Check all combinations (no id, field and id, no field and neither), add field
-    // Check to see what returned frontend value is (object/array)
-    // Can "get" many values, but can only update one!!!
-
 // TODO perform mutation observance
     // Check to see if attributed property is changed
 
@@ -253,5 +241,9 @@ function pollForExposedServerUpdate() {
     // Updates made to the DB push data to the app, update state
     // Changes made to the app push data to the frontend, update state
 
+// TODO callback
+
+// TODO change ngie-value to ngie-binding
 // TODO encryption
+// TODO observable attributes
 // TODO some error values need to be massaged, errors for failure to update

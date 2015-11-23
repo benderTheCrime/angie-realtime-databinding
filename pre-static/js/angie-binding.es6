@@ -5,7 +5,7 @@
  */
 
 // System Modules
-import '../bower_components/MutationObserver/MutationObserver';
+import                      '../bower_components/MutationObserver/MutationObserver';
 
 // Angie Binding Modules
 import debounce from        './util/debounce.es6';
@@ -13,13 +13,12 @@ import debounce from        './util/debounce.es6';
 const w = window, d = w.document;
 
 // Attach a script
-const MUTATION_OBSERVER = new MutationObserver(observeMe),
-    MUTATION_OBSERVER_OPTIONS = {
+const MUTATION_OBSERVER_OPTIONS = {
         childList: false,
-        attributes: true,
+        attributes: false,
         characterData: true,
-        subtree: false,
-        attributeOldValue: true,
+        subtree: true,
+        attributeOldValue: false,
         characterDataOldValue: true
     };
 let script = d.createElement('script'),
@@ -34,7 +33,8 @@ d.body.appendChild(script);
 function boot() {
     const L = location,
         els = Array.from(d.querySelectorAll('*[ngie-iid]')),
-        socket = io([ L.protocol, L.host ].join('//'));
+        socket = io([ L.protocol, L.host ].join('//')),
+        MUTATION_OBSERVER = new MutationObserver(observeMe.bind(null, socket));
 
     // Send all uuids, get back object with all data, one by one binding
     socket.on('connect', function() {
@@ -114,12 +114,15 @@ function boot() {
 
 // TODO "rename me"
 function observeMe(socket, e) {
-    const UUID = this.getAttribute('ngie-iid');
+
+    // This will always be parentNode if its a character data mutation
+    const EL = this || (e[ 0 ] && e[ 0 ].target.parentNode),
+        UUID = EL.getAttribute('ngie-iid');
 
     // TODO the mutation version of this needs to update before it sends
     socket.emit('angie-bound-uuid', {
         uuid: UUID,
-        value: getValue.call(this),
+        value: getValue.call(EL),
 
         // TODO check this to verify the data on the BE,
         // TODO MutationObserver should have this
