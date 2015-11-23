@@ -19,7 +19,9 @@ import $Injector from           'angie-injector';
 // quite difficult
 
 
-
+const UNUSED_BINDING_DISPOSAL_TIMEOUT = +(
+        angie.$$config.hasOwnProperty('unusedBindingDisposalTimeoutHours') || 48
+    ) * 60 * 60 * 1000;
 let bindings = {};
 
 pollForExposedServerUpdate();
@@ -46,6 +48,9 @@ app.factory('$Bind', function(uuid, obj) {
 
         // TODO generate encryption key for binding
         bindings[ uuid ] = obj;
+
+        // When we set up a binding, we also define a timeout
+        setUnusedBindingDisposalTimeout(uuid);
         return uuid;
     }
 
@@ -108,6 +113,9 @@ function attachSocketListener() {
                     }
 
                     initialUUIDBoundDataState[ uuid ] = result;
+
+                    // Reset the binding timeout
+                    setUnusedBindingDisposalTimeout(uuid);
                 }).bind(null, uuid, obj, fieldName));
 
                 proms.push(prom);
@@ -181,6 +189,9 @@ function attachSocketListener() {
                 }).then(function(queryset) {
                     return queryset.update({ [ fieldName ]: VALUE });
                 }).then(function(queryset) {
+
+                    // Reset the binding timeout
+                    setUnusedBindingDisposalTimeout(UUID);
                     return IO.sockets.emit(`a0004::${UUID}`, { value: VALUE });
                 }).catch(function(e) {
                     return emitSocketUUIDError(e.message);
@@ -193,15 +204,7 @@ function attachSocketListener() {
             }
         });
 
-        // TODO destroy bindings when page is navigated away from
-        socket.on('disconnect', function(uuids) {
-
-            // TODO...this should be if ALL of the clients listening on this
-            // uuid are destroyed
-            for (let uuid of uuids) {
-                delete bindings[ uuid ];
-            }
-        });
+        socket.on('disconnect', function() {});
 
         // TODO some verification
         // TODO should respond with the keys to decrypt each of the uuid values
@@ -222,7 +225,24 @@ function pollForExposedServerUpdate() {
     setImmediate(pollForExposedServerUpdate);
 }
 
-// TODO cleanup unused bindings
+function setUnusedBindingDisposalTimeout(uuid) {
+    const fn = (function(uuid) {
+        if (bindings.hasOwnProperty(uuid)) {
+            delete bindings[ uuid ];
+        }
+    }).bind(null, uuid);
+
+    if (bindings[ uuid ] && bindings[ uuid ].hasOwnProperty('timeout')) {
+        clearTimeout(bindings[ uuid ].timeout);
+    }
+
+    bindings[ uuid ].timeout =
+        setTimeout(fn, UNUSED_BINDING_DISPOSAL_TIMEOUT);
+
+    return true;
+}
+
+// TODO timeouts
 // TODO change ngie-value to ngie-binding
 // TODO encryption - this has to happen or anyone can see all the messages
 // TODO observable attributes
