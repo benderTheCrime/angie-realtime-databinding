@@ -10,17 +10,13 @@ import { default as io } from   'socket.io';
 import { sanitize } from        'google-caja-sanitizer';
 import $Injector from           'angie-injector';
 
-// This package should only be included when necessary! It will instantiate a listener
-// and attach the client script ALWAYS!!!!
+// This package should only be included when necessary! It will instantiate a l
+// istener and attach the client script ALWAYS!!!!
 
 // TODO how does this work with cluster?
-
-// The fact that the app is loaded before $$server is called makes this
-// quite difficult
-
-
 const UNUSED_BINDING_DISPOSAL_TIMEOUT = +(
-        angie.$$config.hasOwnProperty('unusedBindingDisposalTimeoutHours') || 48
+        app.$$config.hasOwnProperty('unusedBindingDisposalTimeoutHours') ?
+            app.$$config.unusedBindingDisposalTimeoutHours : 48
     ) * 60 * 60 * 1000;
 let bindings = {};
 
@@ -242,7 +238,6 @@ function setUnusedBindingDisposalTimeout(uuid) {
     return true;
 }
 
-// TODO timeouts
 // TODO change ngie-value to ngie-binding
 // TODO encryption - this has to happen or anyone can see all the messages
 // TODO observable attributes
