@@ -5,10 +5,14 @@
  */
 
 // System Modules
-import util from                'util';
-import { default as io } from   'socket.io';
-import { sanitize } from        'google-caja-sanitizer';
-import $Injector from           'angie-injector';
+import crypto from                              'crypto';
+import util from                                'util';
+import { default as io } from                   'socket.io';
+import { sanitize } from                        'google-caja-sanitizer';
+import $Injector from                           'angie-injector';
+
+// Angie Binding Modules
+import { default as AC } from                   './util/encryption';
 
 // This package should only be included when necessary! It will instantiate a l
 // istener and attach the client script ALWAYS!!!!
@@ -41,9 +45,9 @@ app.factory('$Bind', function(uuid, obj) {
     }
 
     if (!duplicateUUID) {
-
-        // TODO generate encryption key for binding
-        bindings[ uuid ] = obj;
+        bindings[ uuid ] = util._extend({
+            passphrase: crypto.randomBytes(256).toString('base64')
+        }, obj);
 
         // When we set up a binding, we also define a timeout
         setUnusedBindingDisposalTimeout(uuid);
@@ -96,7 +100,13 @@ function attachSocketListener() {
                     obj.id = BINDING.id;
                 }
 
-                prom = Model.filter(obj).then((function(uuid, obj, fieldName, queryset) {
+                prom = Model.filter(obj).then((function(
+                    uuid,
+                    obj,
+                    fieldName,
+                    queryset
+                ) {
+                    const PASSPHRASE = bindings[ uuid ].passphrase;
                     let result;
 
                     if (obj.hasOwnProperty('id')) {
@@ -108,12 +118,16 @@ function attachSocketListener() {
                         result = queryset.results;
                     }
 
-                    initialUUIDBoundDataState[ uuid ] = result;
+                    initialUUIDBoundDataState[ uuid ] = {
+                        passphrase: PASSPHRASE,
+                        value: AC.encrypt(result, PASSPHRASE)
+                    };
+
+                    console.log('HERE 1');
 
                     // Reset the binding timeout
                     setUnusedBindingDisposalTimeout(uuid);
                 }).bind(null, uuid, obj, fieldName));
-
                 proms.push(prom);
             }
 
@@ -138,8 +152,10 @@ function attachSocketListener() {
             const UUID = data.uuid,
 
                 // Sanitize everything we get back from the front end
-                VALUE = sanitize(data.value),
                 BINDING = bindings[ UUID ],
+                PASSPHRASE = BINDING.passphrase,
+                PRE = AC.decrypt(data.pre, PASSPHRASE),
+                VALUE = AC.decrypt(sanitize(data.value), PASSPHRASE),
                 emitSocketUUIDError = emitSocketError.bind(null, UUID);
             let fieldName = BINDING.field || BINDING.filters.values[ 0 ],
                 obj = Object.keys(BINDING.filters || {}).length ?
@@ -163,7 +179,7 @@ function attachSocketListener() {
             if (data.hasOwnProperty('pre')) {
                 obj = util._extend(obj, {
                     values: [ fieldName ],
-                    [ fieldName ]: data.pre
+                    [ fieldName ]: PRE
                 });
 
                 if (BINDING.hasOwnProperty('id') && BINDING.id) {
@@ -174,10 +190,10 @@ function attachSocketListener() {
                     if (
                         obj.id && fieldName &&
                         queryset[ 0 ] &&
-                        queryset[ 0 ][ fieldName ] === data.pre
+                        queryset[ 0 ][ fieldName ] === PRE
                     ) {
                         return queryset;
-                    } else if (queryset === data.pre) {
+                    } else if (queryset === PRE) {
                         return queryset;
                     } else {
                         throw new Error('Invalid pre-change data');
@@ -185,10 +201,13 @@ function attachSocketListener() {
                 }).then(function(queryset) {
                     return queryset.update({ [ fieldName ]: VALUE });
                 }).then(function(queryset) {
+                    const ENCRYPTED_VALUE = data.value;
 
                     // Reset the binding timeout
                     setUnusedBindingDisposalTimeout(UUID);
-                    return IO.sockets.emit(`a0004::${UUID}`, { value: VALUE });
+                    return IO.sockets.emit(`a0004::${UUID}`, {
+                        value: ENCRYPTED_VALUE
+                    });
                 }).catch(function(e) {
                     return emitSocketUUIDError(e.message);
                     throw e;

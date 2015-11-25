@@ -5,10 +5,11 @@
  */
 
 // System Modules
-import                      '../bower_components/MutationObserver/MutationObserver';
+import                                          '../bower_components/MutationObserver/MutationObserver';
 
 // Angie Binding Modules
-import debounce from        './util/debounce.es6';
+import debounce from                            './util/debounce.es6';
+import { default as AC } from                   './util/encryption.es6';
 
 const w = window, d = w.document, bindings = w.angieBindings = {};
 
@@ -22,7 +23,8 @@ const MUTATION_OBSERVER_OPTIONS = {
         characterDataOldValue: true
     };
 let script = d.createElement('script'),
-    stateValues = {};
+    stateValues = {},
+    statePassphrases = {};
 
 script.type = 'text/javascript';
 script.src = './socket.io/socket.io.js';
@@ -53,13 +55,15 @@ function boot() {
 
             // Next set up all of the initial values
             for (let key in data) {
-                const VALUE = data[ key ],
+                const PASSPHRASE = data[ key ].passphrase,
+                    VALUE = AC.decrypt(data[ key ].value, PASSPHRASE),
 
                     // Filter is better...you don't have to scan the whole
                     // document
                     EL = els.filter(
                         v => v.getAttribute('ngie-iid') === key
                     )[ 0 ];
+                statePassphrases[ key ] = PASSPHRASE;
                 setValue(EL, VALUE);
                 stateValues[ key ] = VALUE;
 
@@ -71,9 +75,7 @@ function boot() {
                 };
 
                 socket.on(`a0004::${key}`, data => {
-
-                    // TODO decrypt
-                    w.angieBindings[ key ].callback(data);
+                    w.angieBindings[ key ].callback(AC.decrypt(data.value, PASSPHRASE));
                 });
                 socket.on(`a0005::${key}`, e => {
                     w.angieBindings[ key ].error(e);
@@ -113,7 +115,8 @@ function boot() {
             socket.on(`a0005`, errorFn.bind(null, null));
 
             function updateFn(uuid, data) {
-                const VALUE = data.value;
+                const PASSPHRASE = statePassphrases[ uuid ],
+                    VALUE = AC.decrypt(data.value, PASSPHRASE);
 
                 setValue(d.querySelector(`*[ngie-iid="${uuid}"]`), VALUE);
                 stateValues[ uuid ] = VALUE;
@@ -139,6 +142,7 @@ function observanceFn(socket, e) {
     // This will always be parentNode if its a character data mutation
     const EL = this || (e[ 0 ] && e[ 0 ].target.parentNode),
         UUID = EL.getAttribute('ngie-iid'),
+        PASSPHRASE = statePassphrases[ UUID ],
         VALUE = getValue.call(EL);
 
     if (e && e[ 0 ]) {
@@ -147,8 +151,8 @@ function observanceFn(socket, e) {
 
     socket.emit('a0003', {
         uuid: UUID,
-        value: VALUE,
-        pre: stateValues[ UUID ]
+        value: AC.encrypt(VALUE, PASSPHRASE),
+        pre: AC.encrypt(stateValues[ UUID ], PASSPHRASE)
     });
 }
 
