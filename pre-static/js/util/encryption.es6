@@ -5,34 +5,41 @@
  */
 
 class AngieCrypto {
-    static encrypt(s = '', key) {
-        let str = '';
+    static cipher(s = '', key) {
+        let str = '',
+            ord = [],
+            z;
 
-        console.log('in encrypt');
-        // s = s.toString('utf8');
-        try {
-            s = JSON.stringify(s);
-        } catch(e) {
-
-            // We need to verify the base64 updates properly
-            s = s.toString();
+        for (z = 1; z <= 255; z++) {
+            ord[ String.fromCharCode(z) ] = z;
         }
 
-        for (let i = 0; i < s.length; ++i) {
-            let a = s.charCodeAt(i),
-                b = a ^ key;
-            console.log('ab', a, b);
-            str = str + String.fromCharCode(b);
+        for (let j = z = 0; z < s.length; z++) {
+            str += String.fromCharCode(
+                ord[ s.substr(z, 1) ] ^ ord[ key.substr(j, 1) ]
+            );
+            j = (j < key.length) ? j + 1 : 0;
         }
-        console.log('B5', str.toString('base64'));
-        try {
-            return JSON.parse(str);
-        } catch(e) {
-            return str.toString('base64');
-        }
+
+        return str;
     }
-    static decrypt() {
-        return this.encrypt.apply(this, arguments);
+    static encrypt(s, k) {
+        try {
+            if (typeof s !== 'string') {
+                s = JSON.stringify(s);
+            }
+        } catch(e) {}
+        return this.cipher(encodeURIComponent(escape(s)), k);
+    }
+    static decrypt(s, k) {
+        let result = decodeURIComponent(unescape(this.cipher(s, k)));
+        try {
+            if (typeof result === 'string' && /]|{/.test(result)) {
+                result = JSON.parse(result);
+            }
+        } catch(e) {}
+
+        return result;
     }
 }
 

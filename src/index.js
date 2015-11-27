@@ -67,7 +67,7 @@ function attachSocketListener() {
                 proms = [],
                 e = 'Unable to register ngieIid';
 
-            // Ok here we have list of uuids
+            // Here we have list of uuids
             for (let uuid of data) {
                 const emitSocketUUIDError = emitSocketError.bind(null, uuid);
                 if (!bindings.hasOwnProperty(uuid)) {
@@ -123,8 +123,6 @@ function attachSocketListener() {
                         value: AC.encrypt(result, PASSPHRASE)
                     };
 
-                    console.log('HERE 1');
-
                     // Reset the binding timeout
                     setUnusedBindingDisposalTimeout(uuid);
                 }).bind(null, uuid, obj, fieldName));
@@ -147,8 +145,8 @@ function attachSocketListener() {
                 return emitSocketError(null, e);
             }
 
-            // Ok, we definitely have a binding...good
-            // TODO try to commonize
+            console.log('DATA', data);
+
             const UUID = data.uuid,
 
                 // Sanitize everything we get back from the front end
@@ -201,7 +199,9 @@ function attachSocketListener() {
                 }).then(function(queryset) {
                     return queryset.update({ [ fieldName ]: VALUE });
                 }).then(function(queryset) {
-                    const ENCRYPTED_VALUE = data.value;
+                    const ENCRYPTED_VALUE = AC.encrypt(VALUE, PASSPHRASE);
+
+                    console.log(VALUE, ENCRYPTED_VALUE);
 
                     // Reset the binding timeout
                     setUnusedBindingDisposalTimeout(UUID);

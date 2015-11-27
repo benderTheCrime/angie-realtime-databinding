@@ -43,9 +43,7 @@ function boot() {
     // Send all uuids, get back object with all data, one by one binding
     socket.on('connect', function() {
         socket.on('handshake', function() {
-            socket.emit('a0001', els.map(
-                v => v.getAttribute('ngie-iid')
-            ));
+            socket.emit('a0001', els.map(v => v.getAttribute('ngie-iid')));
         });
 
         socket.on('a0002', function(data) {
@@ -75,7 +73,11 @@ function boot() {
                 };
 
                 socket.on(`a0004::${key}`, data => {
-                    w.angieBindings[ key ].callback(AC.decrypt(data.value, PASSPHRASE));
+                    const VALUE = AC.decrypt(data.value, PASSPHRASE);
+                    stateValues[ key ] = VALUE;
+                    w.angieBindings[ key ].callback({
+                        value: VALUE
+                    });
                 });
                 socket.on(`a0005::${key}`, e => {
                     w.angieBindings[ key ].error(e);
@@ -115,13 +117,8 @@ function boot() {
             socket.on(`a0005`, errorFn.bind(null, null));
 
             function updateFn(uuid, data) {
-                const PASSPHRASE = statePassphrases[ uuid ],
-                    VALUE = AC.decrypt(data.value, PASSPHRASE);
-
-                setValue(d.querySelector(`*[ngie-iid="${uuid}"]`), VALUE);
-                stateValues[ uuid ] = VALUE;
-
-                return true;
+                const VALUE = data.value;
+                return setValue(d.querySelector(`*[ngie-iid="${uuid}"]`), VALUE);
             }
 
             function errorFn(uuid, data) {
