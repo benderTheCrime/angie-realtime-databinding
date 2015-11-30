@@ -201,8 +201,6 @@ function attachSocketListener() {
                 }).then(function(queryset) {
                     const ENCRYPTED_VALUE = AC.encrypt(VALUE, PASSPHRASE);
 
-                    console.log(VALUE, ENCRYPTED_VALUE);
-
                     // Reset the binding timeout
                     setUnusedBindingDisposalTimeout(UUID);
                     return IO.sockets.emit(`a0004::${UUID}`, {
@@ -213,16 +211,11 @@ function attachSocketListener() {
                     throw e;
                 });
             } else {
-
-                // TODO model validation error
                 return emitSocketUUIDError('Invalid pre-change data');
             }
         });
 
         socket.on('disconnect', function() {});
-
-        // TODO some verification
-        // TODO should respond with the keys to decrypt each of the uuid values
         socket.emit('handshake');
 
         function emitSocketError(uuid, message) {
@@ -257,6 +250,7 @@ function setUnusedBindingDisposalTimeout(uuid) {
     return true;
 }
 
+// TODO forms and grouping
 // TODO change ngie-value to ngie-binding
-// TODO encryption - this has to happen or anyone can see all the messages
 // TODO observable attributes
+// TODO docs and tests
