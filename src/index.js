@@ -10,6 +10,7 @@ import util from                                'util';
 import { default as io } from                   'socket.io';
 import { sanitize } from                        'google-caja-sanitizer';
 import $Injector from                           'angie-injector';
+import $LogProvider from                        'angie-log';
 
 // Angie Binding Modules
 import { default as AC } from                   './util/encryption';
@@ -216,6 +217,9 @@ function attachSocketListener() {
         });
 
         socket.on('disconnect', function() {});
+        socket.on('error', function(e) {
+            $LogProvider.error(e);
+        });
         socket.emit('handshake');
 
         function emitSocketError(uuid, message) {
