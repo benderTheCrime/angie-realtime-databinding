@@ -19,6 +19,8 @@ import { default as AC } from                   './util/encryption';
 // istener and attach the client script ALWAYS!!!!
 
 // TODO how does this work with cluster?
+// TODO just make sure that all of the binding requests hit the master fork
+// TODO I believe there is a package for this
 const UNUSED_BINDING_DISPOSAL_TIMEOUT = +(
         app.$$config.hasOwnProperty('unusedBindingDisposalTimeoutHours') ?
             app.$$config.unusedBindingDisposalTimeoutHours : 48
